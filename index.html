@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multilingual Greeter</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <p class="eyebrow">Say hello around the world</p>
+        <h1>Multilingual Greeter</h1>
+        <p class="subtitle">Pick a language to see the greeting.</p>
+      </header>
+
+      <section class="card">
+        <label for="language">Language</label>
+        <select id="language" name="language"></select>
+        <div class="greeting" role="status" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
