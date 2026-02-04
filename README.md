@@ -51,6 +51,11 @@ restart VS Code.
 This project assumes you manage Node.js on a per-project basis (recommended). Using a version
 manager like `nvm` lets each repo pin the Node version it needs.
 
+> **Windows note:** `nvm` setup instructions often use `bash`. If `bash` is not recognized in
+> the VS Code terminal, either (1) switch your default terminal profile to **Git Bash**, or
+> (2) use **PowerShell** with **nvm-windows** instead of the bash-based `nvm` installer.
+> See the nvm-windows installer: https://github.com/coreybutler/nvm-windows/releases
+
 1. Install `nvm`: https://github.com/nvm-sh/nvm#installing-and-updating
 2. From the project root, set the Node version and install dependencies:
 
