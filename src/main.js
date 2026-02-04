@@ -6,7 +6,8 @@ const greetings = [
   { language: 'Português', text: 'Olá, mundo!' },
   { language: '日本語', text: 'こんにちは、世界！' },
   { language: '한국어', text: '안녕하세요, 세계!' },
-  { language: 'العربية', text: 'مرحبًا بالعالم!' }
+  { language: 'العربية', text: 'مرحبًا بالعالم!' },
+  { language: 'Elvish (Quenya)', text: 'Aiya, Ambar!' }
 ];
 
 const languageSelect = document.querySelector('#language');
