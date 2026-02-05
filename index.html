@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clouds and Coins</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Press Start 2P", "Courier New", monospace;
+        background: #0b0f1a;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, #1c2140 0%, #0b0f1a 45%, #070a12 100%);
+        color: #e6f2ff;
+      }
+      .frame {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 16px;
+        padding: 24px;
+        border: 2px solid rgba(230, 242, 255, 0.2);
+        box-shadow: 0 0 30px rgba(28, 255, 255, 0.08);
+        background: rgba(9, 14, 28, 0.92);
+        backdrop-filter: blur(6px);
+      }
+      canvas {
+        border: 2px solid #4ce0ff;
+        box-shadow: 0 0 20px rgba(76, 224, 255, 0.2);
+        background: linear-gradient(180deg, rgba(20, 28, 58, 0.95) 0%, rgba(9, 12, 26, 0.95) 100%);
+      }
+      .panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        font-size: 10px;
+        line-height: 1.6;
+      }
+      .panel h1 {
+        font-size: 16px;
+        margin: 0;
+        color: #4ce0ff;
+        letter-spacing: 1px;
+      }
+      .panel .accent {
+        color: #ffcc66;
+      }
+      .panel button {
+        padding: 10px 12px;
+        font-family: inherit;
+        font-size: 10px;
+        border: 1px solid #4ce0ff;
+        background: transparent;
+        color: #4ce0ff;
+        cursor: pointer;
+      }
+      .panel button:hover {
+        background: rgba(76, 224, 255, 0.2);
+      }
+      .panel select {
+        font-family: inherit;
+        font-size: 10px;
+        padding: 6px;
+        background: #0d1324;
+        color: #e6f2ff;
+        border: 1px solid rgba(76, 224, 255, 0.4);
+      }
+      .legend {
+        border-top: 1px solid rgba(76, 224, 255, 0.25);
+        padding-top: 12px;
+      }
+      .legend span {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <canvas id="game" width="720" height="480"></canvas>
+      <div class="panel">
+        <h1>Clouds &amp; Coins</h1>
+        <p>
+          Pilot <span class="accent">Zura</span> through the cloud corridors and collect the
+          cybernetic lexicon.
+        </p>
+        <label>
+          Theme
+          <select id="theme">
+            <option value="gibson">Gibsonian Sci-Fi</option>
+            <option value="neon">Neon Capital</option>
+            <option value="library">Library Dreams</option>
+          </select>
+        </label>
+        <label>
+          Character
+          <select id="character">
+            <option value="zura">Zura</option>
+            <option value="loan">Loan (Archivist)</option>
+            <option value="maris">Maris (Fixer)</option>
+          </select>
+        </label>
+        <button id="start">Start Mission</button>
+        <button id="restart" disabled>Reset Run</button>
+        <div class="legend">
+          <p>Coins</p>
+          <div><span style="background: #4ce0ff;"></span>Steady speed</div>
+          <div><span style="background: #9aff6b;"></span>Acceleration</div>
+          <div><span style="background: #ff6b6b;"></span>Slow down</div>
+        </div>
+        <p id="status">Press start to begin. Use ↑ ↓ arrows.</p>
+      </div>
+    </div>
+    <script>
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const startButton = document.getElementById("start");
+      const restartButton = document.getElementById("restart");
+      const statusText = document.getElementById("status");
+      const themeSelect = document.getElementById("theme");
+      const characterSelect = document.getElementById("character");
+
+      const words = [
+        {
+          word: "cybernetics",
+          definition: "The science of communication and control in machines and living things.",
+        },
+        {
+          word: "neon pillar",
+          definition: "A towering light column that marks the borders of a megacity district.",
+        },
+        {
+          word: "fixer-upper economy",
+          definition: "A market where patched-up relics are more valuable than new constructs.",
+        },
+        {
+          word: "late capitalism",
+          definition: "An era where corporate feudalism layers above everyday life.",
+        },
+        {
+          word: "afterglow",
+          definition: "The lingering pulse of neon after the street-grid powers down.",
+        },
+        {
+          word: "perplexity drift",
+          definition: "A zone of cognitive haze induced by overstimulated urban senses.",
+        },
+        {
+          word: "alpha-zero",
+          definition: "A baseline simulation setting used by wordsmiths to retrain focus.",
+        },
+        {
+          word: "wordsmith",
+          definition: "A mechanic who forges language into usable upgrades.",
+        },
+        {
+          word: "psychetamine",
+          definition: "A hallucinogenic data stream popular with freelance collectors.",
+        },
+      ];
+
+      const themes = {
+        gibson: {
+          sky: "#12192f",
+          cloud: "#28335c",
+          highlight: "#4ce0ff",
+        },
+        neon: {
+          sky: "#190b24",
+          cloud: "#3b1a4f",
+          highlight: "#ff5bf3",
+        },
+        library: {
+          sky: "#0c1b1f",
+          cloud: "#1b343d",
+          highlight: "#9aff6b",
+        },
+      };
+
+      const coins = [];
+      const clouds = [];
+      let collected = [];
+      let gameState = "start";
+      let lastTime = 0;
+      let speed = 160;
+      let targetSpeed = 160;
+      let scoreFlash = 0;
+      let losses = 0;
+      let spawnTimer = 0;
+      let coinTimer = 0;
+
+      const player = {
+        x: 70,
+        y: canvas.height / 2,
+        radius: 16,
+        velocity: 0,
+      };
+
+      const controls = {
+        up: false,
+        down: false,
+      };
+
+      const lossQuotes = [
+        "Zura's pencil sputters in the rain of static.",
+        "Supportive echo: 'Even the brightest glyphs misfire sometimes.'",
+      ];
+
+      function resetGame() {
+        coins.length = 0;
+        clouds.length = 0;
+        collected = [];
+        player.y = canvas.height / 2;
+        player.velocity = 0;
+        speed = 160;
+        targetSpeed = 160;
+        spawnTimer = 0;
+        coinTimer = 0;
+        scoreFlash = 0;
+        gameState = "start";
+        statusText.textContent = "Press start to begin. Use ↑ ↓ arrows.";
+      }
+
+      function startGame() {
+        resetGame();
+        gameState = "play";
+        statusText.textContent = `Collect words. Theme: ${themeSelect.value}.`;
+      }
+
+      function endGame(state) {
+        gameState = state;
+        if (state === "win") {
+          statusText.textContent = "Mission complete. Lexicon assembled.";
+        } else {
+          const quote = lossQuotes[Math.min(losses, lossQuotes.length - 1)];
+          statusText.textContent = quote;
+        }
+      }
+
+      function spawnCloud() {
+        const gapHeight = 150 + Math.random() * 60;
+        const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
+        clouds.push({
+          x: canvas.width + 40,
+          width: 80,
+          gapY,
+          gapHeight,
+        });
+      }
+
+      function spawnCoin() {
+        const types = ["steady", "boost", "slow"];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const coin = {
+          x: canvas.width + 60,
+          y: 50 + Math.random() * (canvas.height - 100),
+          radius: 10,
+          type,
+        };
+        coins.push(coin);
+      }
+
+      function applyCoinEffect(type) {
+        if (type === "boost") {
+          targetSpeed = Math.min(targetSpeed + 60, 260);
+          scoreFlash = 1;
+        } else if (type === "slow") {
+          targetSpeed = Math.max(targetSpeed - 50, 100);
+        } else {
+          targetSpeed = 160;
+        }
+      }
+
+      function collectWord() {
+        const available = words.filter((entry) => !collected.includes(entry));
+        if (available.length === 0) return;
+        const entry = available[Math.floor(Math.random() * available.length)];
+        collected.push(entry);
+        if (collected.length >= 6) {
+          endGame("win");
+        }
+      }
+
+      function update(delta) {
+        if (gameState !== "play") return;
+
+        spawnTimer += delta;
+        coinTimer += delta;
+        if (spawnTimer > 1.4) {
+          spawnCloud();
+          spawnTimer = 0;
+        }
+        if (coinTimer > 1.1) {
+          spawnCoin();
+          coinTimer = 0;
+        }
+
+        speed += (targetSpeed - speed) * 0.05;
+
+        if (controls.up) {
+          player.velocity = -160;
+        } else if (controls.down) {
+          player.velocity = 160;
+        } else {
+          player.velocity = 0;
+        }
+
+        player.y += player.velocity * delta;
+        player.y = Math.max(player.radius + 10, Math.min(canvas.height - player.radius - 10, player.y));
+
+        clouds.forEach((cloud) => {
+          cloud.x -= speed * delta;
+        });
+        coins.forEach((coin) => {
+          coin.x -= speed * delta;
+        });
+
+        while (clouds.length && clouds[0].x + clouds[0].width < -20) {
+          clouds.shift();
+        }
+        while (coins.length && coins[0].x + coins[0].radius < -20) {
+          coins.shift();
+        }
+
+        clouds.forEach((cloud) => {
+          const withinX = player.x + player.radius > cloud.x && player.x - player.radius < cloud.x + cloud.width;
+          const inGap = player.y > cloud.gapY && player.y < cloud.gapY + cloud.gapHeight;
+          if (withinX && !inGap) {
+            losses += 1;
+            endGame("lose");
+          }
+        });
+
+        coins.forEach((coin, index) => {
+          const dx = player.x - coin.x;
+          const dy = player.y - coin.y;
+          if (Math.hypot(dx, dy) < player.radius + coin.radius) {
+            applyCoinEffect(coin.type);
+            collectWord();
+            coins.splice(index, 1);
+          }
+        });
+      }
+
+      function drawStart() {
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#e6f2ff";
+        ctx.font = "16px 'Press Start 2P', monospace";
+        ctx.fillText("Clouds & Coins", 180, 200);
+        ctx.font = "10px 'Press Start 2P', monospace";
+        ctx.fillText("Press Start Mission", 210, 240);
+      }
+
+      function drawWin() {
+        ctx.fillStyle = "rgba(5, 10, 20, 0.8)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#9aff6b";
+        ctx.font = "14px 'Press Start 2P', monospace";
+        ctx.fillText("Lexicon Recovered", 160, 80);
+        ctx.font = "10px 'Press Start 2P', monospace";
+        let y = 140;
+        collected.forEach((entry) => {
+          ctx.fillStyle = "#e6f2ff";
+          ctx.fillText(`${entry.word}: ${entry.definition}`, 40, y);
+          y += 40;
+        });
+      }
+
+      function drawLose() {
+        ctx.fillStyle = "rgba(5, 5, 10, 0.85)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#ff6b6b";
+        ctx.font = "14px 'Press Start 2P', monospace";
+        ctx.fillText("Signal Lost", 240, 160);
+        ctx.font = "10px 'Press Start 2P', monospace";
+        ctx.fillStyle = "#e6f2ff";
+        ctx.fillText(statusText.textContent, 60, 220);
+      }
+
+      function drawHUD() {
+        ctx.fillStyle = "rgba(0,0,0,0.4)";
+        ctx.fillRect(0, 0, canvas.width, 40);
+        ctx.fillStyle = scoreFlash > 0 ? "#9aff6b" : "#4ce0ff";
+        ctx.font = "10px 'Press Start 2P', monospace";
+        ctx.fillText(`Words: ${collected.length}/6`, 16, 24);
+        ctx.fillStyle = "#e6f2ff";
+        ctx.fillText(`Speed: ${Math.round(speed)}`, 200, 24);
+        ctx.fillText(`Character: ${characterSelect.value}`, 360, 24);
+        ctx.fillText(`Theme: ${themeSelect.value}`, 560, 24);
+      }
+
+      function drawPlayer() {
+        ctx.fillStyle = "#ffcc66";
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#0b0f1a";
+        ctx.fillRect(player.x - 8, player.y - 2, 16, 4);
+      }
+
+      function draw() {
+        const theme = themes[themeSelect.value];
+        ctx.fillStyle = theme.sky;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        clouds.forEach((cloud) => {
+          ctx.fillStyle = theme.cloud;
+          ctx.fillRect(cloud.x, 0, cloud.width, cloud.gapY);
+          ctx.fillRect(cloud.x, cloud.gapY + cloud.gapHeight, cloud.width, canvas.height - cloud.gapY);
+        });
+
+        coins.forEach((coin) => {
+          if (coin.type === "boost") {
+            ctx.fillStyle = "#9aff6b";
+          } else if (coin.type === "slow") {
+            ctx.fillStyle = "#ff6b6b";
+          } else {
+            ctx.fillStyle = "#4ce0ff";
+          }
+          ctx.beginPath();
+          ctx.arc(coin.x, coin.y, coin.radius, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        drawPlayer();
+        drawHUD();
+
+        if (gameState === "start") {
+          drawStart();
+        } else if (gameState === "win") {
+          drawWin();
+        } else if (gameState === "lose") {
+          drawLose();
+        }
+      }
+
+      function loop(timestamp) {
+        const delta = Math.min((timestamp - lastTime) / 1000, 0.032);
+        lastTime = timestamp;
+        update(delta);
+        draw();
+        if (scoreFlash > 0) {
+          scoreFlash -= delta;
+        }
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowUp") controls.up = true;
+        if (event.key === "ArrowDown") controls.down = true;
+      });
+      window.addEventListener("keyup", (event) => {
+        if (event.key === "ArrowUp") controls.up = false;
+        if (event.key === "ArrowDown") controls.down = false;
+      });
+
+      startButton.addEventListener("click", () => {
+        startGame();
+        restartButton.disabled = false;
+      });
+
+      restartButton.addEventListener("click", () => {
+        resetGame();
+        gameState = "play";
+      });
+
+      window.addEventListener("focus", () => {
+        if (gameState === "lose" || gameState === "win") return;
+        lastTime = performance.now();
+      });
+
+      requestAnimationFrame(loop);
+    </script>
+  </body>
+</html>
